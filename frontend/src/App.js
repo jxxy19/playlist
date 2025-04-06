@@ -1,5 +1,6 @@
 import React from "react";
-import VideoChapterparser from "./component/VideoChapterParser"; // 경로가 다르면 조정!
+import VideoChapterparser from "./component/VideoChapterParser";
+
 
 function App() {
   return (

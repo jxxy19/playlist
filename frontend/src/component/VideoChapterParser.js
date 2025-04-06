@@ -1,40 +1,46 @@
 import React, { useState } from "react";
 import axios from "axios";
-import "../styles/VideoChapterparser.css"
+import Player from "./Player";
+import "../styles/VideoChapterparser.css";
 
 const VideoChapterparser = () => {
   const [videoId, setVideoId] = useState("");
+  const [videoLink, setVideoLink] = useState("");
   const [chapters, setChapters] = useState([]);
 
-  const fetchDescription = async (videoId) => {
-    console.log("video Id : ", videoId);
+  // const fetchDescription = async (videoId) => {
+  const fetchDescription = async () => {
+    function extractVideoId(url) {
+      const regex =
+        /(?:youtube\.com\/(?:.*v=|v\/|embed\/)|youtu\.be\/)([a-zA-Z0-9_-]{11})/;
+      const match = url.match(regex);
+      return match ? match[1] : null;
+    }
+    const extractedId = extractVideoId(videoLink);
+    console.log("video Id : ", extractedId);
+
+    if (!extractedId) {
+      alert("유뷰트 링크를 입력해주세요!");
+      return;
+    }
+
+    setVideoId(extractedId);
+
     try {
+      console.log("비디오아이디 입력 예정 :" + extractedId);
+      console.log(typeof extractedId);
       const response = await axios.get(
         `http://localhost:8080/youtube/chapters`,
         {
-          params: { videoId },
+          params: { videoId: extractedId },
         }
       );
-      console.log("YouTube API Response:", response.data);
-      const description = response.data.items?.[0]?.snippet?.description;
+      console.log("백엔드로 보낼 videoId:", extractedId); // 꼭 넣어봐!
 
-      const chapterRegex = /(\d{1,2}:\d{2})\s+(.+)/g;
-      const extractedCapter = [];
-      let match;
-      while ((match = chapterRegex.exec(description)) !== null) {
-        extractedCapter.push({ time: match[1], title: match[2] });
-      }
-
-      if (description) {
-        console.log("Description:", description);
-      } else {
-        console.warn("Description을 찾지 못했어요.");
-      }
-
-      console.log(" 추츨된 챕터 :", extractedCapter);
-      setChapters(extractedCapter);
+      console.log("백엔드 응답 데이터 : ", response.data);
+      setChapters(response.data);
     } catch (error) {
-      console.error("불러오기 실패:", error);
+      console.error("불러오기 실패: ", error);
     }
   };
 
@@ -42,21 +48,32 @@ const VideoChapterparser = () => {
     <div className="container">
       <input
         type="text"
-        placeholder="유튜브 Video ID 입력"
-        value={videoId}
-        onChange={(e) => setVideoId(e.target.value)}
+        placeholder="유튜브 주소를 입력해주세요"
+        value={videoLink}
+        onChange={(e) => setVideoLink(e.target.value)}
         className="input-group"
       />
-      <button onClick={() => fetchDescription(videoId)}>
-        가져오기
-      </button>
+      <button onClick={fetchDescription}>가져오기</button>
+
+      {videoId && <Player videoId={videoId} />}
 
       <ul>
-        {chapters.map((c, i) => (
-          <li key={i}>
-            ⏱ {c.time} - 🎵 {c.title}
-          </li>
-        ))}
+        {chapters.flatMap((c, i) => {
+          const text = `${c.time} ${c.title}`;
+          const pattern = /(\d{1,2}:\d{2})\s+(.*?)(?=\s+\d{1,2}:\d{2}|$)/g;
+
+          const parts = [];
+          let match;
+          while ((match = pattern.exec(text)) !== null) {
+            parts.push({ time: match[1], title: match[2] });
+          }
+
+          return parts.map((part, idx) => (
+            <li key={`${i}-${idx}`}>
+              ⏱ {part.time} - 🎵 {part.title}
+            </li>
+          ));
+        })}
       </ul>
     </div>
   );
